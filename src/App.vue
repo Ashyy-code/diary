@@ -178,6 +178,22 @@
       </sub>
     </div>
 
+    <div class="statbox" v-if="currentView == 'stats'">
+      <h3>Feeding over time</h3>
+      <div class="chart">
+        <div
+          v-for="feedRecord in reversedFeedData"
+          :key="feedRecord"
+          class="line"
+        >
+          <div
+            class="dot animate__animated animate__fadeInUp"
+            :style="getChartHeightPrc(feedRecord)"
+          ></div>
+        </div>
+      </div>
+    </div>
+
     <div
       v-if="currentView == 'feed'"
       class="list animate__animated animate__fadeIn"
@@ -189,14 +205,30 @@
             <th>Time</th>
             <th>ML</th>
             <th>Since Previous</th>
+            <!-- <th><i class="las la-trash"></i></th> -->
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in userData.feedData" :key="item">
             <td>{{ item.day }}/{{ item.month }}/{{ item.year }}</td>
             <td>{{ item.time }}</td>
-            <td>{{ item.ml }}</td>
+            <td>
+              <input
+                type="number"
+                v-model="item.ml"
+                v-if="item.editing"
+                @focus="$event.target.select()"
+                @blur="
+                  item.editing = false;
+                  syncFeedData();
+                "
+              />
+              <span v-if="!item.editing" @click="item.editing = true">{{
+                item.ml
+              }}</span>
+            </td>
             <td>{{ item.feedGap }}</td>
+            <!-- <td><i class="las la-trash"></i></td> -->
           </tr>
         </tbody>
       </table>
@@ -248,6 +280,7 @@ export default {
       //feedData: JSON.parse(localStorage.getItem("feedData")),
       //feedSettings: JSON.parse(localStorage.getItem("feedSettings")),
       userData: null,
+      reversedFeedData:null,
       currentView: "feed",
       feedNext: "00:00",
       medNext: "00:00",
@@ -265,6 +298,7 @@ export default {
       createUser: false,
       createUserBabyName: null,
       createUserInterval: null,
+      bestFeed: 0,
       timer: 1,
     };
   },
@@ -459,6 +493,14 @@ export default {
             //this.userToken = this.userData.token;
             //localStorage.setItem("rubyNotesToken",this.userToken);
             //this.syncFeedData();
+            let newArr = JSON.parse(JSON.stringify(this.userData.feedData));
+            newArr.reverse();
+            this.reversedFeedData = newArr;
+            this.reversedFeedData.forEach((item) => {
+              if (item.ml > this.bestFeed) {
+                this.bestFeed = item.ml + 10;
+              }
+            });
           }
           this.appLoaded = true;
           //console.log(response.data);
@@ -549,6 +591,13 @@ export default {
       Notification.requestPermission().then((result) => {
         console.log(result);
       });
+    },
+
+    getChartHeightPrc(item) {
+      let thisItemML = item.ml;
+      //find the percentage of the max this item is
+      let prc = (thisItemML / this.bestFeed) * 100;
+      return "height:" + prc + "%";
     },
   },
 };
@@ -812,6 +861,24 @@ input {
   color: wheat;
   &[name] {
     width: 150px;
+  }
+}
+
+.chart {
+  display: flex;
+  justify-content: space-between;
+
+  .line {
+    width: 1px;
+    height: 100px;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+
+    .dot {
+      width: 1px;
+      background: white;
+    }
   }
 }
 </style>
